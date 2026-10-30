@@ -346,18 +346,19 @@ function BookingDetailContent() {
                 </section>
               )}
 
-              {state.booking.status === "in_progress" && !state.dispute && (
+              {["approved", "payment_submitted", "confirmed", "in_progress", "completed", "resolved"].includes(state.booking.status) && !state.dispute && (
                 <section className="details-panel milestone-panel" aria-labelledby="issue-heading">
-                  <h2 id="issue-heading">Need help with this trip?</h2>
+                  <h2 id="issue-heading">Submit a dispute to admin</h2>
+                  <p>Report a problem with this booking for administrator review.</p>
                   <form onSubmit={handleDispute} className="milestone-form">
                     <label>Describe the issue
                       <textarea name="reason" minLength={5} maxLength={1000} rows={3} required placeholder="Tell the administrator what happened" />
                     </label>
-                    <button className="button button-dark" type="submit">Report an issue</button>
+                    <button className="button button-dark" type="submit">Submit dispute</button>
                   </form>
                 </section>
               )}
-              {state.dispute && <section className="details-panel milestone-panel"><h2>Issue: {state.dispute.status}</h2><p>{state.dispute.reason}</p>{state.dispute.resolution && <p><strong>Resolution:</strong> {state.dispute.resolution}</p>}</section>}
+              {state.dispute && <section className="details-panel milestone-panel"><h2>Dispute: {state.dispute.status}</h2><p>{state.dispute.reason}</p>{state.dispute.resolution && <p><strong>Admin resolution:</strong> {state.dispute.resolution}</p>}</section>}
             </>
           )}
         </section>

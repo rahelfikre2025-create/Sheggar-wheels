@@ -79,7 +79,7 @@ export function createDispute({ bookingId, reason } = {}) {
   const isRenter = hasRole(actor, "renter") && actor.id === booking.renterId;
   const isOwner = hasRole(actor, "owner") && actor.id === booking.ownerId && car?.ownerId === actor.id;
   if (!isRenter && !isOwner) return fail("You cannot report an issue for this booking.");
-  if (booking.status !== "in_progress") return fail("An issue can be reported while the rental is in progress.");
+  if (!["approved", "payment_submitted", "confirmed", "in_progress", "completed", "resolved"].includes(booking.status)) return fail("An issue can be reported after a booking has been approved or confirmed.");
   if (getDisputes().some((item) => item.bookingId === bookingId && item.status === "open")) return fail("This booking already has an open issue.");
   const text = String(reason ?? "").trim();
   if (text.length < 5 || text.length > 1000) return fail("Describe the issue in 5 to 1,000 characters.");

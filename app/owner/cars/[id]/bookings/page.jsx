@@ -14,7 +14,7 @@ import {
   initializeDemoData,
 } from "@/app/lib/storage";
 import { formatPrice } from "@/app/lib/data/cars";
-import { exportRowsToCsv, getReviews, replyToReview } from "@/app/lib/milestones";
+import { createDispute, exportRowsToCsv, getDisputes, getReviews, replyToReview } from "@/app/lib/milestones";
 
 function formatDate(dateString) {
   if (!dateString) return "Date unavailable";
@@ -45,6 +45,7 @@ function OwnerCarBookingsContent() {
     car: null,
     bookings: [],
     reviews: [],
+    disputes: [],
     error: "",
   });
 
@@ -81,6 +82,7 @@ function OwnerCarBookingsContent() {
       car,
       bookings,
       reviews: getReviews().filter((review) => review.ownerId === userId && review.carId === car.id),
+      disputes: getDisputes(),
       error: "",
     });
   }
@@ -177,6 +179,14 @@ function OwnerCarBookingsContent() {
     if (result.ok && state.user) loadOwnerBookings(state.user.id, carId);
   }
 
+  function handleDispute(event, bookingId) {
+    event.preventDefault();
+    const reason = new FormData(event.currentTarget).get("reason");
+    const result = createDispute({ bookingId, reason });
+    setFeedback(result.ok ? "Your dispute was submitted to the administrator." : result.error);
+    if (result.ok && state.user) loadOwnerBookings(state.user.id, carId);
+  }
+
   function handleExport() {
     const actor = getCurrentSession();
     if (!state.user || !actor || actor.id !== state.user.id || !hasRole(actor, "owner") || !state.car || state.car.ownerId !== actor.id) {
@@ -244,7 +254,7 @@ function OwnerCarBookingsContent() {
                 </span>
               </div>
 
-              <div className="owner-booking-export"><button className="button button-primary" type="button" onClick={handleExport}>Export this car's bookings and earnings</button></div>
+              <div className="owner-booking-export"><button className="button button-primary" type="button" onClick={handleExport}>Export this car&apos;s bookings and earnings</button></div>
 
               {feedback && (
                 <p
@@ -303,6 +313,13 @@ function OwnerCarBookingsContent() {
                         {booking.status === "in_progress" && (
                           <button className="button button-primary" type="button" disabled={busyBookingId === booking.id} onClick={() => handleTransition(booking.id, "completed")}>Mark rental complete</button>
                         )}
+                        {(() => {
+                          const dispute = state.disputes.find((item) => item.bookingId === booking.id);
+                          const canReport = ["approved", "payment_submitted", "confirmed", "in_progress", "completed", "resolved"].includes(booking.status);
+                          if (dispute) return <div className="details-panel milestone-panel" style={{ marginTop: 14 }}><h3>{dispute.status === "resolved" ? "Dispute resolved" : "Dispute submitted"}</h3><p>{dispute.reason}</p>{dispute.resolution && <p><strong>Admin resolution:</strong> {dispute.resolution}</p>}</div>;
+                          if (!canReport) return null;
+                          return <div className="details-panel milestone-panel" style={{ marginTop: 14 }}><h3>Submit a dispute to admin</h3><p>Report a problem with this booking for administrator review.</p><form className="milestone-form" onSubmit={(event) => handleDispute(event, booking.id)}><label>Describe the issue<textarea name="reason" minLength={5} maxLength={1000} rows={3} required placeholder="Explain the issue you want the administrator to resolve" /></label><button className="button button-dark" type="submit">Submit dispute</button></form></div>;
+                        })()}
                         {state.reviews.filter((review) => review.bookingId === booking.id).map((review) => (
                           <div className="request-info" key={review.id} style={{ marginTop: 14 }}>
                             <div><strong>Renter review · {"★".repeat(review.rating)}</strong><p>{review.comment}</p>

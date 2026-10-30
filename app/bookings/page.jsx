@@ -167,7 +167,7 @@ function BookingCard({ booking, car }) {
             <p>The owner must verify it before the rental is confirmed.</p>
           </div>
         )}
-        <Link className="text-link" href={`/bookings/${booking.id}`}>View booking details <span aria-hidden="true">↗</span></Link>
+        <div className="owner-request-actions" style={{ marginTop: 14 }}><Link className="text-link" href={`/bookings/${booking.id}`}>View booking details <span aria-hidden="true">↗</span></Link>{["approved", "payment_submitted", "confirmed", "in_progress", "completed", "resolved"].includes(booking.status) && <Link className="button button-dark" href={`/bookings/${booking.id}#issue-heading`}>Submit dispute to admin</Link>}</div>
       </div>
     </article>
   );
