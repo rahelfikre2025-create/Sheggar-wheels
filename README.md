@@ -4,6 +4,7 @@ Sheggar Wheels is a responsive frontend capstone for a peer-to-peer car rental m
 
 This is a frontend demonstration. Records persist in browser storage. Authentication, owner-provided payment instructions, demo payment references, location data, and platform commission are simulated; the app does not process payments or provide production-grade authorization.
 
+
 ## Features
 
 - Car search, neighbourhood/date filters, sorting, URL sharing, pagination, and Leaflet map.
