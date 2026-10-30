@@ -51,6 +51,7 @@ function BookingDetailContent() {
   const [state, setState] = useState({
     loading: true,
     signedIn: false,
+    viewerRole: null,
     booking: null,
     car: null,
     review: null,
@@ -59,60 +60,70 @@ function BookingDetailContent() {
   });
 
   useEffect(() => {
+    const applyState = (nextState) => {
+      window.setTimeout(() => setState(nextState), 0);
+    };
     const initResult = initializeDemoData();
 
     if (!initResult.ok) {
-      setState({
+      applyState({
         loading: false,
         signedIn: false,
+        viewerRole: null,
         booking: null, car: null, review: null, dispute: null,
         error: initResult.error,
       });
-      return;
+      return undefined;
     }
 
     const user = getCurrentSession();
 
     if (!user) {
-      setState({
+      applyState({
         loading: false,
         signedIn: false,
+        viewerRole: null,
         booking: null, car: null, review: null, dispute: null,
         error: "",
       });
-      return;
+      return undefined;
     }
 
-    if (!hasRole(user, "renter")) {
-      setState({
+    const isRenter = hasRole(user, "renter");
+    const isOwner = hasRole(user, "owner");
+    if (!isRenter && !isOwner) {
+      applyState({
         loading: false,
         signedIn: true,
+        viewerRole: null,
         booking: null, car: null, review: null, dispute: null,
         error: "This booking is unavailable.",
       });
-      return;
+      return undefined;
     }
 
-    const booking = getBookings().find(
-      (item) => item.id === bookingId && item.renterId === user.id
-    );
+    const booking = getBookings().find((item) => {
+      if (item.id !== bookingId) return false;
+      return (isRenter && item.renterId === user.id) || (isOwner && item.ownerId === user.id);
+    });
 
-    // Do not reveal whether another renter's booking exists.
     if (!booking) {
-      setState({
+      applyState({
         loading: false,
         signedIn: true,
+        viewerRole: isRenter ? "renter" : "owner",
         booking: null, car: null, review: null, dispute: null,
         error: "This booking is unavailable or does not belong to your account.",
       });
-      return;
+      return undefined;
     }
 
     const car = getCars().find((item) => item.id === booking.carId) ?? null;
 
-    setState({
+    applyState({
       loading: false,
       signedIn: true,
+      viewerRole: isRenter ? "renter" : "owner",
       booking,
       car,
       review: getReviews().find((item) => item.bookingId === booking.id) ?? null,
@@ -122,11 +133,18 @@ function BookingDetailContent() {
 
     const refreshBooking = () => {
       const currentUser = getCurrentSession();
-      if (!currentUser || currentUser.id !== user.id || !hasRole(currentUser, "renter")) return;
-      const updatedBooking = getBookings().find((item) => item.id === bookingId && item.renterId === currentUser.id);
+      if (!currentUser || currentUser.id !== user.id) return;
+      const currentIsRenter = hasRole(currentUser, "renter");
+      const currentIsOwner = hasRole(currentUser, "owner");
+      if (!currentIsRenter && !currentIsOwner) return;
+      const updatedBooking = getBookings().find((item) => {
+        if (item.id !== bookingId) return false;
+        return (currentIsRenter && item.renterId === currentUser.id) || (currentIsOwner && item.ownerId === currentUser.id);
+      });
       if (!updatedBooking) return;
       setState((current) => ({
         ...current,
+        viewerRole: currentIsRenter ? "renter" : "owner",
         booking: updatedBooking,
         car: getCars().find((item) => item.id === updatedBooking.carId) ?? null,
         review: getReviews().find((item) => item.bookingId === updatedBooking.id) ?? null,

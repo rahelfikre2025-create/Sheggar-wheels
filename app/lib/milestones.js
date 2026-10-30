@@ -27,7 +27,12 @@ function getOwnedBooking(actor, bookingId, role) {
 
 export function getReviews() { return arrayAt(STORAGE_KEYS.reviews); }
 export function getDisputes() { return arrayAt(STORAGE_KEYS.disputes); }
-export function getAnnouncements() { return arrayAt(STORAGE_KEYS.announcements).filter((item) => item.active !== false); }
+export function getAnnouncements() {
+  const now = Date.now();
+  return arrayAt(STORAGE_KEYS.announcements)
+    .filter((item) => item.active !== false)
+    .filter((item) => !item.expiresAt || new Date(item.expiresAt).getTime() > now);
+}
 
 export function createReview({ bookingId, rating, comment } = {}) {
   const auth = getActor(); if (auth.error) return fail(auth.error);
@@ -113,13 +118,25 @@ export function resolveDispute({ disputeId, resolution } = {}) {
   return { ok: true, dispute: updated };
 }
 
-export function createAnnouncement({ title, message } = {}) {
+export function createAnnouncement({ title, message, durationDays } = {}) {
   const auth = getActor(); if (auth.error) return fail(auth.error);
   if (!hasRole(auth.actor, "admin")) return fail("Only the administrator can publish announcements.");
   const cleanTitle = String(title ?? "").trim();
   const cleanMessage = String(message ?? "").trim();
+  const selectedDuration = Number(durationDays);
+  if (!Number.isFinite(selectedDuration) || selectedDuration < 1 || selectedDuration > 365) return fail("Choose an announcement duration of at least 1 day.");
   if (cleanTitle.length < 3 || cleanTitle.length > 100 || cleanMessage.length < 3 || cleanMessage.length > 1000) return fail("Enter a title (3–100 characters) and message (3–1,000 characters).");
-  const announcement = { id: makeId("announcement"), title: cleanTitle, message: cleanMessage, active: true, createdAt: new Date().toISOString(), createdBy: auth.actor.id };
+  const expiresAt = new Date(Date.now() + selectedDuration * 24 * 60 * 60 * 1000).toISOString();
+  const announcement = {
+    id: makeId("announcement"),
+    title: cleanTitle,
+    message: cleanMessage,
+    active: true,
+    durationDays: selectedDuration,
+    expiresAt,
+    createdAt: new Date().toISOString(),
+    createdBy: auth.actor.id,
+  };
   const result = writeStorage(STORAGE_KEYS.announcements, [...arrayAt(STORAGE_KEYS.announcements), announcement]);
   return result.ok ? { ok: true, announcement } : fail(result.error);
 }
@@ -137,4 +154,4 @@ export function exportRowsToCsv(filename, headers, rows) {
   } catch (error) { return fail(error?.message || "Could not export CSV."); }
 }
 
-export function getPublicAnnouncements() { return getAnnouncements(); }
+export function getPublicAnnouncements() { return getAnnouncements().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); }
